@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import connection
-from wagtail.models import Site
+from wagtail.models.sites import get_site_for_hostname
 from wagtail.search.index import class_is_indexed
 from wagtail.search.models import Query
 
@@ -30,18 +30,12 @@ def resolve_site(hostname):
     :type hostname: str
     """
     # Optionally allow querying by port
+    h, p = None, None
     if ":" in hostname:
-        (hostname, port) = hostname.split(":", 1)
-        query = {
-            "hostname": hostname,
-            "port": port,
-        }
+        (h, p) = hostname.split(":", 1)
     else:
-        query = {
-            "hostname": hostname,
-        }
-
-    return Site.objects.get(**query)
+        h = hostname
+    return get_site_for_hostname(h, p)
 
 
 def _sliced_queryset(qs, limit=None, offset=None):
