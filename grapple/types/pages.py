@@ -292,12 +292,8 @@ def get_site_filter(info, **kwargs):
     if site_hostname is not None:
         try:
             return resolve_site(site_hostname)
-        except Site.MultipleObjectsReturned:
-            raise GraphQLError(
-                "Your 'site' filter value of '{}' returned multiple sites. Try adding a port number (for example: '{}:80').".format(
-                    site_hostname, site_hostname
-                )
-            )
+        except Site.DoesNotExist:
+            raise GraphQLError("Site Not Found")
     elif in_current_site:
         return Site.find_for_request(info.context)
 
