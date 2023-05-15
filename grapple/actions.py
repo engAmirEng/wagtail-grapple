@@ -255,7 +255,7 @@ def model_resolver(field):
 def build_node_type(
     cls: type,
     type_prefix: str,
-    interface: graphene.Interface,
+    interface: Union[Type[graphene.Interface], None],
     base_type: Type[DjangoObjectType] = DjangoObjectType,
 ):
     """
