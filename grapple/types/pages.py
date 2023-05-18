@@ -262,8 +262,9 @@ def get_specific_page(
 
             if site:
                 # Got a site, so make the url_path query as specific as possible
+                # TODO change get_first_child to get_active_child
                 qs = qs.filter(
-                    url_path=f"{site.root_page.url_path}{url_path.lstrip('/')}"
+                    url_path=f"{site.root_page.get_first_child().url_path}{url_path.lstrip('/')}"
                 )
             else:
                 # if the url_path is not specific enough, or the same url_path exists under multiple
