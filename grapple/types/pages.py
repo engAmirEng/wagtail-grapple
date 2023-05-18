@@ -271,8 +271,8 @@ def get_specific_page(
                 # To-Do: make site a 1st class argument on the page query, rather than just `in_site`
                 qs = qs.filter(url_path__endswith=url_path)
 
-            if qs.exists():
-                page = qs.first()
+        if qs.exists():
+            page = qs.first()
 
     except BaseException:
         page = None
