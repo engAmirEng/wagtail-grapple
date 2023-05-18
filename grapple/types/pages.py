@@ -281,25 +281,23 @@ def get_specific_page(
 
 
 def get_site_filter(info, **kwargs):
+    sitename = kwargs.pop("sitename", None)
     site_hostname = kwargs.pop("site", None)
     in_current_site = kwargs.get("in_site", False)
 
-    if site_hostname is not None and in_current_site:
+    if sum((sitename is not None, site_hostname is not None, in_current_site)) > 1:
         raise GraphQLError(
-            "The 'site' and 'in_site' filters cannot be used at the same time."
+            "Only one of 'site', 'in_site' and 'sitename' filters can be used at the same time."
         )
-
-    if site_hostname is not None:
-        try:
+    try:
+        if sitename is not None:
+            return Site.objects.get(sitename=sitename)
+        if site_hostname is not None:
             return resolve_site(site_hostname)
-        except Site.MultipleObjectsReturned:
-            raise GraphQLError(
-                "Your 'site' filter value of '{}' returned multiple sites. Try adding a port number (for example: '{}:80').".format(
-                    site_hostname, site_hostname
-                )
-            )
-    elif in_current_site:
-        return Site.find_for_request(info.context)
+        elif in_current_site:
+            return Site.find_for_request(info.context)
+    except Site.DoesNotExist:
+        raise GraphQLError("Site Not Found")
 
 
 def PagesQuery():
@@ -315,6 +313,7 @@ def PagesQuery():
                     "Filter by content type. Uses the `app.Model` notation. Accepts a comma separated list of content types."
                 ),
             ),
+            sitename=graphene.Argument(graphene.String, description=_("@sitename")),
             in_site=graphene.Argument(
                 graphene.Boolean,
                 description=_("Filter to pages in the current site only."),
@@ -365,6 +364,7 @@ def PagesQuery():
                     "Filter by content type using the app.ModelName notation. e.g. `myapp.BlogPage`"
                 ),
             ),
+            sitename=graphene.Argument(graphene.String, description=_("@sitename")),
             in_site=graphene.Argument(
                 graphene.Boolean,
                 description=_("Filter to pages in the current site only."),
