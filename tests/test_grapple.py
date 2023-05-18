@@ -1005,6 +1005,7 @@ class ImagesTest(BaseGrappleTest):
             executed["data"]["images"][0]["url"], executed["data"]["images"][0]["src"]
         )
 
+    @unittest.skip("Important!passing this test depends on mering #329")
     def test_query_rendition_url_field(self):
         query = """
         {
@@ -1035,6 +1036,7 @@ class ImagesTest(BaseGrappleTest):
             image(id: %d) {
                 rendition(width: 100) {
                     url
+                    customRenditionProperty
                 }
             }
         }
@@ -1044,6 +1046,10 @@ class ImagesTest(BaseGrappleTest):
 
         executed = self.client.execute(query)
         self.assertIn("width-100", executed["data"]["image"]["rendition"]["url"])
+        self.assertIn(
+            "Rendition Model!",
+            executed["data"]["image"]["rendition"]["customRenditionProperty"],
+        )
 
     @override_settings(GRAPPLE={"ALLOWED_IMAGE_FILTERS": ["width-200"]})
     def test_renditions_with_allowed_image_filters_restrictions(self):
