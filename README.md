@@ -19,8 +19,6 @@ A library to build GraphQL endpoints easily so you can grapple your Wagtail data
 
 ## About The Project
 
-![GraphQL Preview Demo](docs/demo.gif)
-
 There is a range of GraphQL packages for Python and specifically Django.
 However, getting these packages to work out of the box with an existing infrastructure
 without errors isn't as easy to come by.
@@ -35,28 +33,24 @@ to your model and away you go (although if you want to go deeper you can!).
 
 -   Easily create GraphQL types by adding a small annotation in your models.
 -   Supports traditional Wagtail models:
-    -   Pages (including Streamfield & Orderables)
+    -   Pages (including StreamField & Orderables)
     -   Snippets
     -   Images
     -   Documents
-    -   Media
+    -   Media (via [wagtailmedia](https://pypi.org/project/wagtailmedia/))
     -   Settings
     -   Redirects
     -   Search (on all models)
 -   Custom Image & Document model support
 -   Pagination support
 -   Middleware support
--   Advanced headless preview functionality built using GraphQL Subscriptions to enable Page previews on any device!
 
 ### Built With
 
 This library is an abstraction upon and relies heavily on Graphene & Graphene Django.
-We also use Django Channels and the Potrace image library.
 
 -   [Graphene](https://github.com/graphql-python/graphene)
 -   [Graphene Django](https://github.com/graphql-python/graphene)
--   [Potrace](https://github.com/skyrpex/potrace)
--   [Django Channels](https://github.com/django/channels) when installed with `wagtail_grapple[channels]`
 
 ## Getting Started
 
@@ -65,14 +59,16 @@ Getting Grapple installed is designed to be as simple as possible!
 ### Prerequisites
 
 ```
-Python>=3.8,<3.12
+Python >= 3.8
 Wagtail >= 4.1
 ```
 
 ### Installation
 
+Install using pip
+
 ```bash
-pip install wagtail_grapple
+python -m pip install wagtail_grapple
 ```
 
 Add the following to the `INSTALLED_APPS` list in your Wagtail settings file:
@@ -82,19 +78,6 @@ INSTALLED_APPS = [
     # ...
     "grapple",
     "graphene_django",
-    # ...
-]
-```
-
-For GraphQL Subscriptions with Django Channels, run `pip install wagtail_grapple[channels]` and add
-`channels` to installed apps:
-
-```python
-INSTALLED_APPS = [
-    # ...
-    "grapple",
-    "graphene_django",
-    "channels",
     # ...
 ]
 ```
@@ -112,6 +95,7 @@ GRAPPLE = {
 Add the GraphQL URLs to your `urls.py`:
 
 ```python
+from django.urls import include, path
 from grapple import urls as grapple_urls
 
 # ...
@@ -175,23 +159,22 @@ Any contributions [you make](https://github.com/torchbox/wagtail-grapple/graphs/
 
 ### Local development
 
-#### With SQLite
--   In the Python environment of your choice, navigate to `/example`
--   Run `pip install -r requirements.txt`
--   Run `./manage.py migrate`
--   Run server `./manage.py runserver`
--   Run tests `./manage.py test`
+-   In the Python environment of your choice, navigate to `tests/`
+-   Run `python -m pip install -r requirements.txt`
+-   Run `python manage.py migrate`
+-   Run server `python manage.py runserver`
+-   Run tests `python manage.py test`
 
 #### With Postgres
 
--   In the Python environment of your choice, navigate to `/example`
--   Run `pip install -r requirements.txt`
 -   Ensure you have docker and docker compose
 -   Run `docker compose up`
 -   Run `export DATABASE_URL="postgres://postgres:postgres@localhost/postgres"`
--   Run `./manage.py migrate`
--   Run server `./manage.py runserver`
--   Run tests `./manage.py test`
+-   In the Python environment of your choice, navigate to `tests/`
+-   Run `python -m pip install -r requirements.txt`
+-   Run `python manage.py migrate`
+-   Run server `python manage.py runserver`
+-   Run tests `python manage.py test`
 
 ## Compatibility
 

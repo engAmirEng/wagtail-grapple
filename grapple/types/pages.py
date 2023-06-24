@@ -1,16 +1,13 @@
 import graphene
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 from graphene_django.types import DjangoObjectType
 from graphql import GraphQLError
 from wagtail.models import Page as WagtailPage
 from wagtail.models import Site
-from wagtail_headless_preview.signals import preview_update
 
 from ..registry import registry
-from ..settings import has_channels
 from ..utils import resolve_queryset, resolve_site
 from .structures import QuerySetList
 
@@ -182,16 +179,14 @@ def get_preview_page(token):
             key, value = arg.split("=")
             params[key] = value
 
-        id = params.get("id")
-        if id:
+        if _id := params.get("id"):
             """
             This is a page that had already been saved. Lookup the class and call get_page_from_preview_token.
 
             TODO: update headless preview to always send page_type in the token so we can always
-            the if content_type branch and elimiate the if id branch.
+            the if content_type branch and eliminate the if id branch.
             """
-            page = WagtailPage.objects.get(pk=id).specific
-            if page:
+            if page := WagtailPage.objects.get(pk=_id).specific:
                 cls = type(page)
                 """
                 get_page_from_preview_token is added by wagtail-headless-preview,
@@ -202,15 +197,13 @@ def get_preview_page(token):
                     """we assume that get_page_from_preview_token validates the token"""
                     return cls.get_page_from_preview_token(token)
 
-        content_type = params.get("page_type")
-        if content_type:
+        if content_type := params.get("page_type"):
             """
             this is a page which has not been saved yet. lookup the content_type to get the class
             and call get_page_from_preview_token.
             """
             app_label, model = content_type.lower().split(".")
-            ctype = ContentType.objects.get(app_label=app_label, model=model)
-            if ctype:
+            if ctype := ContentType.objects.get(app_label=app_label, model=model):
                 cls = ctype.model_class()
                 """
                 get_page_from_preview_token is added by wagtail-headless-preview,
@@ -220,7 +213,7 @@ def get_preview_page(token):
                 if hasattr(cls, "get_page_from_preview_token"):
                     """we assume that get_page_from_preview_token validates the token"""
                     return cls.get_page_from_preview_token(token)
-    except Exception:
+    except (WagtailPage.DoesNotExist, ContentType.DoesNotExist, ValueError):
         """
         catch and suppress errors. we don't want to expose any information about unpublished content
         accidentally.
@@ -242,15 +235,15 @@ def get_specific_page(
 
         # Everything but the special RootPage
         qs = WagtailPage.objects.live().public().filter(depth__gt=1).specific()
-        ctype = None
 
         if site:
             qs = qs.in_site(site)
 
         if content_type:
             app_label, model = content_type.lower().split(".")
-            ctype = ContentType.objects.get(app_label=app_label, model=model)
-            qs = qs.filter(content_type=ctype)
+            qs = qs.filter(
+                content_type=ContentType.objects.get(app_label=app_label, model=model)
+            )
 
         if id:
             page = qs.get(pk=id)
@@ -275,7 +268,7 @@ def get_specific_page(
             if qs.exists():
                 page = qs.first()
 
-    except BaseException:
+    except WagtailPage.DoesNotExist:
         page = None
 
     return page
@@ -290,15 +283,19 @@ def get_site_filter(info, **kwargs):
         raise GraphQLError(
             "Only one of 'site', 'in_site' and 'sitename' filters can be used at the same time."
         )
-    try:
-        if sitename is not None:
-            return Site.objects.get(sitename=sitename)
-        if site_hostname is not None:
+    if sitename is not None:
+        return Site.objects.get(sitename=sitename)
+    if site_hostname is not None:
+        try:
             return resolve_site(site_hostname)
-        elif in_current_site:
-            return Site.find_for_request(info.context)
-    except Site.DoesNotExist:
-        raise GraphQLError("Site Not Found")
+        except Site.MultipleObjectsReturned as err:
+            raise GraphQLError(
+                "Your 'site' filter value of '{}' returned multiple sites. Try adding a port number (for example: '{}:80').".format(
+                    site_hostname, site_hostname
+                )
+            ) from err
+    elif in_current_site:
+        return Site.find_for_request(info.context)
 
 
 def PagesQuery():
@@ -423,72 +420,3 @@ def PagesQuery():
             )
 
     return Mixin
-
-
-if has_channels:
-    from rx.subject import Subject
-
-    # Subject to sync Django Signals to Observable
-    preview_subject = Subject()
-
-    @receiver(preview_update)
-    def on_updated(sender, token, **kwargs):
-        preview_subject.on_next(token)
-
-    # Subscription Mixin
-    def PagesSubscription():
-        def preview_observable(id, slug, url_path, token, content_type, site):
-            return preview_subject.filter(
-                lambda previewToken: previewToken == token
-            ).map(
-                lambda token: get_specific_page(
-                    id, slug, url_path, token, content_type, site
-                )
-            )
-
-        class Mixin:
-            page = graphene.Field(
-                PageInterface,
-                id=graphene.Int(),
-                slug=graphene.String(),
-                url_path=graphene.Argument(
-                    graphene.String,
-                    description=_(
-                        "Filter by url path. Note: in a multi-site setup, returns the first available page based. "
-                        "Use `inSite: true` from the relevant site domain."
-                    ),
-                ),
-                token=graphene.Argument(
-                    graphene.String,
-                    description=_(
-                        "Filter by preview token as passed by the `wagtail-headless-preview` package."
-                    ),
-                ),
-                content_type=graphene.Argument(
-                    graphene.String,
-                    description=_(
-                        "Filter by content type using the `app.ModelName` notation. e.g. `myapp.BlogPage`"
-                    ),
-                ),
-                in_site=graphene.Argument(
-                    graphene.Boolean,
-                    description=_("Filter to pages in the current site only."),
-                    default_value=False,
-                ),
-                site=graphene.Argument(
-                    graphene.String,
-                    description=_("Filter to pages in the give site."),
-                ),
-            )
-
-            def resolve_page(self, info, **kwargs):
-                return preview_observable(
-                    id=kwargs.get("id"),
-                    slug=kwargs.get("slug"),
-                    url_path=kwargs.get("url_path"),
-                    token=kwargs.get("token"),
-                    content_type=kwargs.get("content_type"),
-                    site=get_site_filter(info, **kwargs),
-                )
-
-        return Mixin

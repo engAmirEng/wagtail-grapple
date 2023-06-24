@@ -17,22 +17,19 @@ ENV DJANGO_ENV dev
 COPY ./grapple /code/grapple
 COPY ./setup.cfg /code/setup.cfg
 COPY ./setup.py ./code/setup.py
-COPY ./requirements-channels.txt /code/requirements-channels.txt
-COPY ./requirements.txt /code/requirements.txt
 
 # copy example site requires file
-COPY ./example/requirements.txt /code/example/requirements.txt
-COPY ./example/requirements-channels.txt /code/example/requirements-channels.txt
+COPY ./tests/requirements.txt /code/tests/requirements.txt
 
-WORKDIR /code/example
+WORKDIR /code/tests
 
 RUN pip install --upgrade pip
 # Install any needed packages specified in requirements.txt
-RUN pip install -r ./requirements-channels.txt
+RUN pip install -r ./requirements.txt
 RUN pip install gunicorn
 
 # Copy the current directory contents into the container at /code/
-COPY ./example /code/example
+COPY ./tests /code/tests
 # Set the working directory to /code/
 
 RUN python manage.py migrate

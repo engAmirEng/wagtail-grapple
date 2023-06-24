@@ -143,13 +143,10 @@ def get_fields_and_properties(cls):
     # cls._meta.get_fields(include_parents=False) includes symmetrical ManyToMany fields, while get_model_fields doesn't
     fields = [field for field, instance in get_model_fields(cls)]
 
-    try:
-        properties = [
-            method[0]
-            for method in inspect.getmembers(cls, lambda o: isinstance(o, property))
-        ]
-    except BaseException:
-        properties = []
+    properties = [
+        method[0]
+        for method in inspect.getmembers(cls, lambda o: isinstance(o, property))
+    ]
 
     return fields + properties
 
@@ -414,7 +411,7 @@ def custom_cls_resolver(*, cls, graphql_field):
         elif callable(getattr(cls, graphql_field.field_source)):
             return lambda self, instance, info, **kwargs: getattr(
                 klass, graphql_field.field_source
-            )(values=get_all_field_values(instance=instance, cls=cls))
+            )(values=get_all_field_values(instance=instance, cls=cls), **kwargs)
 
     # If the `field_name` is a property or method of the class: use it.
     if hasattr(graphql_field, "field_name") and hasattr(
@@ -427,7 +424,7 @@ def custom_cls_resolver(*, cls, graphql_field):
         elif callable(getattr(cls, graphql_field.field_name)):
             return lambda self, instance, info, **kwargs: getattr(
                 klass, graphql_field.field_name
-            )(values=get_all_field_values(instance=instance, cls=cls))
+            )(values=get_all_field_values(instance=instance, cls=cls), **kwargs)
 
     # No match found - fall back to the streamfield_resolver() later.
     return None
@@ -468,7 +465,8 @@ def build_streamfield_type(
 
             # Add support for `graphql_fields`
             methods["resolve_" + field.field_name] = (
-                custom_cls_resolver(cls=cls, graphql_field=item) or streamfield_resolver
+                custom_cls_resolver(cls=cls, graphql_field=field)
+                or streamfield_resolver
             )
 
             # Add field to GQL type with correct field-type
